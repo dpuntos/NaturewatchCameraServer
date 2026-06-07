@@ -34,16 +34,30 @@ jobs:
             else
                 echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
             fi""")
+        network_interfaces = dedent("""\
+            mkdir -p /etc/network
+            touch /etc/network/interfaces
+            cp /etc/network/interfaces /etc/network/interfaces-backup""")
 
         lines = text.splitlines()
+        patched_sysctl = False
+        patched_interfaces = False
         for index, line in enumerate(lines):
             if "/etc/sysctl.conf" in line and "net.ipv4.ip_forward=1" in line:
                 indent = line[:len(line) - len(line.lstrip())]
                 lines[index] = "\n".join(indent + new_line for new_line in new.splitlines())
-                path.write_text("\n".join(lines) + "\n")
-                break
-        else:
+                patched_sysctl = True
+            if line.strip() == "cp /etc/network/interfaces /etc/network/interfaces-backup":
+                indent = line[:len(line) - len(line.lstrip())]
+                lines[index] = "\n".join(indent + new_line for new_line in network_interfaces.splitlines())
+                patched_interfaces = True
+
+        if not patched_sysctl:
             raise SystemExit(f"Expected sysctl command not found in {path}")
+        if not patched_interfaces:
+            raise SystemExit(f"Expected network interfaces command not found in {path}")
+
+        path.write_text("\n".join(lines) + "\n")
         PY
 
     - name: Checkout Project Repository
