@@ -9,7 +9,8 @@ class SessionButton extends React.Component {
     }
 
     renderText() {
-        if (this.props.sessionStatus === this.props.type) {
+        if (this.props.sessionStatus === this.props.type
+            || (this.props.sessionStatus === "delayed" && this.props.pendingSession === this.props.type)) {
             return (
                 <span>{"Stop " + this.props.type + " capture"}</span>
             );
@@ -32,9 +33,12 @@ class SessionButton extends React.Component {
                 onClick={this.handleClick}
                 active={
                     this.props.sessionStatus === this.props.type
+                    || (this.props.sessionStatus === "delayed" && this.props.pendingSession === this.props.type)
                 }
                 disabled={
-                    this.props.sessionStatus !== "inactive" && this.props.sessionStatus !== this.props.type
+                    this.props.sessionStatus !== "inactive"
+                    && !(this.props.sessionStatus === "delayed" && this.props.pendingSession === this.props.type)
+                    && this.props.sessionStatus !== this.props.type
                 }
             >
                 {this.renderText()}

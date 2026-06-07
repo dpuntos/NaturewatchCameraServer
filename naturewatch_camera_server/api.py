@@ -100,6 +100,8 @@ def settings_handler():
             current_app.logger.info("Changing timelapse settings to " + str(settings["timelapse"]))
             current_app.change_detector.timelapse_active = settings["timelapse"]["active"]
             current_app.change_detector.timelapse = settings["timelapse"]["interval"]
+        if "capture_delay_hours" in settings:
+            current_app.change_detector.capture_delay_hours = max(0, float(settings["capture_delay_hours"]))
         
         new_settings = construct_settings_object(current_app.camera_controller, current_app.change_detector)
         return Response(json.dumps(new_settings), mimetype='application/json')
@@ -132,7 +134,8 @@ def construct_settings_object(camera_controller, change_detector):
         "timelapse": {
             "active": current_app.change_detector.timelapse_active,
             "interval": current_app.change_detector.timelapse,
-        }
+        },
+        "capture_delay_hours": current_app.change_detector.capture_delay_hours
     }
     return settings
 
@@ -145,7 +148,9 @@ def get_session():
     """
     session_status = {
         "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
+        "time_started": current_app.change_detector.session_start_time,
+        "pending_mode": current_app.change_detector.pending_mode,
+        "scheduled_start_time": current_app.change_detector.scheduled_start_time
     }
     return Response(json.dumps(session_status), mimetype='application/json')
 
@@ -165,7 +170,9 @@ def start_session_handler(session_type):
 
     session_status = {
         "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
+        "time_started": current_app.change_detector.session_start_time,
+        "pending_mode": current_app.change_detector.pending_mode,
+        "scheduled_start_time": current_app.change_detector.scheduled_start_time
     }
     return Response(json.dumps(session_status), mimetype='application/json')
 
@@ -179,7 +186,9 @@ def stop_session_handler():
     current_app.change_detector.stop_session()
     session_status = {
         "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
+        "time_started": current_app.change_detector.session_start_time,
+        "pending_mode": current_app.change_detector.pending_mode,
+        "scheduled_start_time": current_app.change_detector.scheduled_start_time
     }
     return Response(json.dumps(session_status), mimetype='application/json')
 

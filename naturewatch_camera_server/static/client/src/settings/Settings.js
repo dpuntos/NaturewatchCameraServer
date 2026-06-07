@@ -4,6 +4,7 @@ import {Button, Collapse, Accordion, Card} from 'react-bootstrap';
 import SensitivitySetting from './SensitivitySetting';
 import ExposureSetting from './ExposureSetting';
 import TimelapseSetting from './TimelapseSetting';
+import CaptureDelaySetting from './CaptureDelaySetting';
 import PropTypes from "prop-types";
 
 class Settings extends React.Component {
@@ -18,6 +19,8 @@ class Settings extends React.Component {
         this.onTimelapseActiveChange = this.onTimelapseActiveChange.bind(this);
         this.onIntervalChange = this.onIntervalChange.bind(this);
         this.onIntervalChangeEnd = this.onIntervalChangeEnd.bind(this);
+        this.onCaptureDelayChange = this.onCaptureDelayChange.bind(this);
+        this.onCaptureDelayChangeEnd = this.onCaptureDelayChangeEnd.bind(this);
         
 
         this.state = {
@@ -33,7 +36,8 @@ class Settings extends React.Component {
                 timelapse : {
                     active: false,
                     interval: 0
-                }
+                },
+                capture_delay_hours: 0
             }
         };
 
@@ -187,6 +191,18 @@ class Settings extends React.Component {
         });
     }
 
+    onCaptureDelayChange(event) {
+        let currentSettings = this.state.settings;
+        currentSettings.capture_delay_hours = Math.max(0, event.target.valueAsNumber || 0);
+        this.setState({
+            settings: currentSettings
+        });
+    }
+
+    onCaptureDelayChangeEnd() {
+        this.postSettings();
+    }
+
     intervalValueToPos(val) {
 
         var position = 0;
@@ -292,6 +308,20 @@ class Settings extends React.Component {
                                         onActiveChange={this.onTimelapseActiveChange}
                                         intervalPos={this.intervalValueToPos(this.state.settings.timelapse.interval)}
                                         interval={this.state.settings.timelapse.interval}
+                                    />
+                                </Card.Body>
+                            </Accordion.Collapse>
+                        </Card>
+                        <Card>
+                            <Accordion.Toggle as={Card.Header} eventKey={5}>
+                                Capture Delay
+                            </Accordion.Toggle>
+                            <Accordion.Collapse eventKey={5}>
+                                <Card.Body>
+                                    <CaptureDelaySetting
+                                        value={this.state.settings.capture_delay_hours}
+                                        onChange={this.onCaptureDelayChange}
+                                        onChangeEnd={this.onCaptureDelayChangeEnd}
                                     />
                                 </Card.Body>
                             </Accordion.Collapse>

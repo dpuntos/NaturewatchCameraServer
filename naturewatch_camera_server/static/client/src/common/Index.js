@@ -20,12 +20,15 @@ class Index extends React.Component {
         this.onSettingsOpen = this.onSettingsOpen.bind(this);
         this.onSettingsClose = this.onSettingsClose.bind(this);
         this.onTimelapseActiveChange = this.onTimelapseActiveChange.bind(this);
+        this.getSessionStatus = this.getSessionStatus.bind(this);
 
         this.state = {
             feedStatus: "active",
             sessionStatus: {
                 mode: "inactive",
-                time_started: 0
+                time_started: 0,
+                pending_mode: null,
+                scheduled_start_time: null
             },
             isSettingsOpen: false,
             isTimelapseActive: false,
@@ -33,14 +36,9 @@ class Index extends React.Component {
     }
 
     componentDidMount() {
-        // Get session object form camera
-        axios.get('/api/session')
-            .then((res) => {
-                const status = res.data;
-                this.setState({sessionStatus: status});
-                console.log("INFO: status received.");
-                console.log(this.state.sessionStatus);
-            });
+        this.getSessionStatus();
+        this.sessionStatusTimer = setInterval(this.getSessionStatus, 30000);
+
         // Send time to camera.
         //let currentTime = this.formatTime(new Date());
         let currentTime = Date.now() / 1000;
@@ -52,10 +50,32 @@ class Index extends React.Component {
             });
     }
 
+    componentWillUnmount() {
+        clearInterval(this.sessionStatusTimer);
+    }
+
+    getSessionStatus() {
+        // Get session object from camera
+        axios.get('/api/session')
+            .then((res) => {
+                const status = res.data;
+                this.setState({sessionStatus: status});
+                console.log("INFO: status received.");
+                console.log(this.state.sessionStatus);
+            });
+    }
+
     captureStatus() {
         if (this.state.sessionStatus.mode === "inactive") {
             return (
                 <p className="feed-status">Capture is <u>off</u></p>
+            );
+        } else if (this.state.sessionStatus.mode === "delayed") {
+            const startTime = new Date(this.state.sessionStatus.scheduled_start_time * 1000);
+            return (
+                <p className="feed-status">
+                    Capture is <u>scheduled</u> for {this.formatTime(startTime)}
+                </p>
             );
         } else {
             return (
@@ -193,6 +213,7 @@ class Index extends React.Component {
                                         type={"video"}
                                         onButtonClick={this.onSessionButtonClick}
                                         sessionStatus={this.state.sessionStatus.mode}
+                                        pendingSession={this.state.sessionStatus.pending_mode}
                                     />
                                 </Col>
                                 <Col xs={6}>
@@ -200,6 +221,7 @@ class Index extends React.Component {
                                         type={this.state.isTimelapseActive ? "timelapse" : "photo"}
                                         onButtonClick={this.onSessionButtonClick}
                                         sessionStatus={this.state.sessionStatus.mode}
+                                        pendingSession={this.state.sessionStatus.pending_mode}
                                     />
                                 </Col>
                             </Row>}
