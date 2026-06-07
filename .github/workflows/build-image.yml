@@ -22,22 +22,28 @@ jobs:
       run: |
         python3 - <<'PY'
         from pathlib import Path
+        from textwrap import dedent
 
         path = Path("CustomPiOS/src/modules/auto-hotspot/start_chroot_script")
         text = path.read_text()
-        old = "sed -i s/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g /etc/sysctl.conf"
-        new = """mkdir -p /etc
-        touch /etc/sysctl.conf
-        if grep -q '^#\\?net.ipv4.ip_forward=1' /etc/sysctl.conf; then
-            sed -i 's/^#\\?net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-        else
-            echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
-        fi"""
+        new = dedent("""\
+            mkdir -p /etc
+            touch /etc/sysctl.conf
+            if grep -q '^#\\?net.ipv4.ip_forward=1' /etc/sysctl.conf; then
+                sed -i 's/^#\\?net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+            else
+                echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
+            fi""")
 
-        if old not in text:
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            if "/etc/sysctl.conf" in line and "net.ipv4.ip_forward=1" in line:
+                indent = line[:len(line) - len(line.lstrip())]
+                lines[index] = "\n".join(indent + new_line for new_line in new.splitlines())
+                path.write_text("\n".join(lines) + "\n")
+                break
+        else:
             raise SystemExit(f"Expected sysctl command not found in {path}")
-
-        path.write_text(text.replace(old, new))
         PY
 
     - name: Checkout Project Repository
