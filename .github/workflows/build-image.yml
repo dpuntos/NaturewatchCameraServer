@@ -1,6 +1,9 @@
 name: Build Image
 on: [push, pull_request, workflow_dispatch]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,56 +12,20 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install coreutils file jq p7zip-full python3 python3-git qemu-user-static
+        sudo apt-get install coreutils p7zip-full qemu-user-static
 
     - name: Checkout CustomPiOS
       uses: actions/checkout@v4
       with:
         repository: 'guysoft/CustomPiOS'
         ref: devel
+        fetch-depth: 0
         path: CustomPiOS
 
-    - name: Patch CustomPiOS auto-hotspot sysctl handling
+    - name: Pin CustomPiOS version
       run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        from textwrap import dedent
-
-        path = Path("CustomPiOS/src/modules/auto-hotspot/start_chroot_script")
-        text = path.read_text()
-        new = dedent("""\
-            mkdir -p /etc
-            touch /etc/sysctl.conf
-            if grep -q '^#\\?net.ipv4.ip_forward=1' /etc/sysctl.conf; then
-                sed -i 's/^#\\?net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-            else
-                echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf
-            fi""")
-        network_interfaces = dedent("""\
-            mkdir -p /etc/network
-            touch /etc/network/interfaces
-            cp /etc/network/interfaces /etc/network/interfaces-backup""")
-
-        lines = text.splitlines()
-        patched_sysctl = False
-        patched_interfaces = False
-        for index, line in enumerate(lines):
-            if "/etc/sysctl.conf" in line and "net.ipv4.ip_forward=1" in line:
-                indent = line[:len(line) - len(line.lstrip())]
-                lines[index] = "\n".join(indent + new_line for new_line in new.splitlines())
-                patched_sysctl = True
-            if line.strip() == "cp /etc/network/interfaces /etc/network/interfaces-backup":
-                indent = line[:len(line) - len(line.lstrip())]
-                lines[index] = "\n".join(indent + new_line for new_line in network_interfaces.splitlines())
-                patched_interfaces = True
-
-        if not patched_sysctl:
-            raise SystemExit(f"Expected sysctl command not found in {path}")
-        if not patched_interfaces:
-            raise SystemExit(f"Expected network interfaces command not found in {path}")
-
-        path.write_text("\n".join(lines) + "\n")
-        PY
+        cd CustomPiOS
+        git checkout ea6fa50
 
     - name: Checkout Project Repository
       uses: actions/checkout@v4
@@ -81,7 +48,7 @@ jobs:
     - name: Download Raspbian Image
       run: |
         cd repository/os/image
-        wget -q -c --trust-server-names 'https://downloads.raspberrypi.org/raspios_lite_armhf_latest'
+        wget -q -c 'https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2022-01-28/2022-01-28-raspios-bullseye-armhf-lite.zip'
 
     - name: Update CustomPiOS Paths
       run: |
@@ -109,31 +76,17 @@ jobs:
 
     - name: Zip Output
       run: gzip mynaturewatch-camera.img
-    - uses: actions/upload-artifact@v4
+
+    - name: Upload Image Artifact
+      uses: actions/upload-artifact@v4
       with:
         name: mynaturewatch-camera.img.gz
         path: mynaturewatch-camera.img.gz
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+    - name: Create Draft Release
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: My Naturewatch Camera ${{ github.ref }}
         draft: true
         prerelease: false
-
-    - name: Upload Release
-      id: upload-release-asset
-      uses: actions/upload-release-asset@v1
-      if: startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
-        asset_path: mynaturewatch-camera.img.gz
-        asset_name: mynaturewatch-camera.img.gz
-        asset_content_type: application/octet-stream
+        files: mynaturewatch-camera.img.gz
