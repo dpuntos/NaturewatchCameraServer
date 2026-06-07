@@ -32,6 +32,9 @@ class ChangeDetector(Thread):
 
         self.mode = "inactive"
         self.session_start_time = None
+        self.pending_mode = None
+        self.scheduled_start_time = None
+        self.capture_delay_hours = 0
         self.avg = None
         self.lastPhotoTime = self.get_fake_time()
         self.numOfPhotos = 0
@@ -144,20 +147,42 @@ class ChangeDetector(Thread):
         self.maxWidth = max_width
         self.maxHeight = max_width
 
-    def start_photo_session(self):
+    def start_delayed_session(self, session_type):
+        self.logger.info('ChangeDetector: scheduling %s capture', session_type)
+        self.mode = "delayed"
+        self.pending_mode = session_type
+        self.session_start_time = self.get_fake_time()
+        self.scheduled_start_time = self.session_start_time + (self.capture_delay_hours * 3600)
+
+    def start_photo_session(self, ignore_delay=False):
+        if self.capture_delay_hours > 0 and not ignore_delay:
+            self.start_delayed_session("photo")
+            return
         self.logger.info('ChangeDetector: starting photo capture')
         self.mode = "photo"
+        self.pending_mode = None
+        self.scheduled_start_time = None
         self.session_start_time = self.get_fake_time()
 
-    def start_video_session(self):
+    def start_video_session(self, ignore_delay=False):
+        if self.capture_delay_hours > 0 and not ignore_delay:
+            self.start_delayed_session("video")
+            return
         self.logger.info('ChangeDetector: starting video capture')
         self.mode = "video"
+        self.pending_mode = None
+        self.scheduled_start_time = None
         self.camera_controller.start_video_stream()
         self.session_start_time = self.get_fake_time()
 
-    def start_timelapse_session(self):
+    def start_timelapse_session(self, ignore_delay=False):
+        if self.capture_delay_hours > 0 and not ignore_delay:
+            self.start_delayed_session("timelapse")
+            return
         self.logger.info('ChangeDetector: starting timelapse capture')
         self.mode = "timelapse"
+        self.pending_mode = None
+        self.scheduled_start_time = None
         self.session_start_time = self.get_fake_time()
         
         
@@ -165,15 +190,25 @@ class ChangeDetector(Thread):
         self.logger.info('ChangeDetector: ending capture')
         if self.mode == "video":
             self.camera_controller.stop_video_stream()
-        elif self.mode == "photo" or self.mode == "timelapse":
+        elif self.mode == "photo" or self.mode == "timelapse" or self.mode == "delayed":
             pass
         self.mode = "inactive"
+        self.pending_mode = None
+        self.scheduled_start_time = None
 
 # TODO: whether to use the video-port or not does not directly depend on the mode
 # In case video is requested, the video port will always be used for both resolutions
 # In case photo is requested, the video port can be used, but need not. It should be left a matter of configuration
     def update(self):
         time.sleep(0.02)
+        if self.mode == "delayed" and self.get_fake_time() >= self.scheduled_start_time:
+            if self.pending_mode == "photo":
+                self.start_photo_session(ignore_delay=True)
+            elif self.pending_mode == "video":
+                self.start_video_session(ignore_delay=True)
+            elif self.pending_mode == "timelapse":
+                self.start_timelapse_session(ignore_delay=True)
+
         # only check for motion while a session is active
         if self.mode in ["photo", "video"]:
             # get an md image

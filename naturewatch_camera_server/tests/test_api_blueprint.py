@@ -66,8 +66,10 @@ def test_get_settings(test_client):
     assert "rotation" in response_dict
     assert "exposure" in response_dict
     assert "sensitivity" in response_dict
+    assert "capture_delay_hours" in response_dict
     assert "rotation" in response_dict
     assert response_dict["sensitivity"] == "default"
+    assert response_dict["capture_delay_hours"] == 0
     assert response_dict["exposure"]["mode"] == 'auto'
     assert response_dict["exposure"]["iso"] == 0
     assert response_dict["exposure"]["shutter_speed"] == 0
@@ -84,7 +86,8 @@ def test_post_settings(test_client):
         "exposure": {
             "mode": "auto",
         },
-        "sensitivity": "less"
+        "sensitivity": "less",
+        "capture_delay_hours": 0
     }
     headers = {
         "Content-Type": "application/json",
@@ -96,7 +99,9 @@ def test_post_settings(test_client):
     assert "rotation" in response_dict
     assert "exposure" in response_dict
     assert "sensitivity" in response_dict
+    assert "capture_delay_hours" in response_dict
     assert response_dict["sensitivity"] == "less"
+    assert response_dict["capture_delay_hours"] == 0
     assert response_dict["exposure"]["mode"] == 'auto'
     assert response_dict["exposure"]["iso"] == 0
     assert response_dict["exposure"]["shutter_speed"] == 0
@@ -113,7 +118,45 @@ def test_session_status(test_client):
     assert response.status_code == 200
     response_dict = json.loads(response.data.decode('utf8'))
     assert "time_started" in response_dict
+    assert "pending_mode" in response_dict
+    assert "scheduled_start_time" in response_dict
     assert response_dict["mode"] == "inactive"
+
+
+def test_delayed_session(test_client):
+    """
+    GIVEN a Flask application with capture delay enabled
+    WHEN '/api/session/start/photo' is requested (POST)
+    THEN photo session should be scheduled instead of started immediately.
+    """
+    settings = {
+        "rotation": True,
+        "exposure": {
+            "mode": "auto",
+        },
+        "sensitivity": "less",
+        "capture_delay_hours": 1
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    response = test_client.post('/api/settings', data=json.dumps(settings), headers=headers)
+    assert response.status_code == 200
+
+    response = test_client.post('/api/session/start/photo')
+    assert response.status_code == 200
+    response_dict = json.loads(response.data.decode('utf8'))
+    assert response_dict["mode"] == "delayed"
+    assert response_dict["pending_mode"] == "photo"
+    assert response_dict["scheduled_start_time"] > response_dict["time_started"]
+
+    response = test_client.post('/api/session/stop')
+    assert response.status_code == 200
+
+    settings["capture_delay_hours"] = 0
+    response = test_client.post('/api/settings', data=json.dumps(settings), headers=headers)
+    assert response.status_code == 200
 
 
 def test_session_photo(test_client):
