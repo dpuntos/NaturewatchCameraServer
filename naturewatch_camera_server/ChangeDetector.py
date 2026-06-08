@@ -200,14 +200,24 @@ class ChangeDetector(Thread):
 # In case video is requested, the video port will always be used for both resolutions
 # In case photo is requested, the video port can be used, but need not. It should be left a matter of configuration
     def update(self):
-        time.sleep(0.02)
-        if self.mode == "delayed" and self.get_fake_time() >= self.scheduled_start_time:
+        if self.mode == "inactive":
+            time.sleep(1)
+            return
+
+        if self.mode == "delayed":
+            seconds_until_start = self.scheduled_start_time - self.get_fake_time()
+            if seconds_until_start > 0:
+                time.sleep(min(30, seconds_until_start))
+                return
+
             if self.pending_mode == "photo":
                 self.start_photo_session(ignore_delay=True)
             elif self.pending_mode == "video":
                 self.start_video_session(ignore_delay=True)
             elif self.pending_mode == "timelapse":
                 self.start_timelapse_session(ignore_delay=True)
+
+        time.sleep(0.02)
 
         # only check for motion while a session is active
         if self.mode in ["photo", "video"]:
