@@ -6,6 +6,7 @@ import os
 import datetime
 from subprocess import call
 import zipfile
+import shutil
 
 try:
     import picamera
@@ -120,7 +121,14 @@ class FileSaver(Thread):
             input_video = os.path.join(self.config["videos_path"], filename)
             stream.copy_to(input_video, seconds=15)
             output_video = os.path.join(self.config["videos_path"], filenameMp4)
-            call(["MP4Box", "-fps", str(self.config["frame_rate"]), "-add", input_video, output_video])
+            if shutil.which("MP4Box"):
+                call(["MP4Box", "-fps", str(self.config["frame_rate"]), "-add", input_video, output_video])
+            elif shutil.which("ffmpeg"):
+                call(["ffmpeg", "-y", "-framerate", str(self.config["frame_rate"]), "-i", input_video,
+                      "-c", "copy", output_video])
+            else:
+                self.logger.error('FileSaver: neither MP4Box nor ffmpeg is available for video conversion')
+                return None
             os.remove(input_video)
             self.logger.debug('FileSaver: removed interim file ' + filename)
             return filenameMp4
