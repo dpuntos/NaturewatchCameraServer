@@ -100,6 +100,8 @@ def settings_handler():
             current_app.logger.info("Changing timelapse settings to " + str(settings["timelapse"]))
             current_app.change_detector.timelapse_active = settings["timelapse"]["active"]
             current_app.change_detector.timelapse = settings["timelapse"]["interval"]
+        if "start_delay_hours" in settings:
+            current_app.change_detector.set_start_delay_hours(settings["start_delay_hours"])
         
         new_settings = construct_settings_object(current_app.camera_controller, current_app.change_detector)
         return Response(json.dumps(new_settings), mimetype='application/json')
@@ -132,9 +134,18 @@ def construct_settings_object(camera_controller, change_detector):
         "timelapse": {
             "active": current_app.change_detector.timelapse_active,
             "interval": current_app.change_detector.timelapse,
-        }
+        },
+        "start_delay_hours": current_app.change_detector.start_delay_hours
     }
     return settings
+
+
+def construct_session_object(change_detector):
+    return {
+        "mode": change_detector.mode,
+        "time_started": change_detector.session_start_time,
+        "is_waiting_for_start": change_detector.waiting_for_start
+    }
 
 
 @api.route('/session')
@@ -143,11 +154,7 @@ def get_session():
     Get session status
     :return: session status json object
     """
-    session_status = {
-        "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
-    }
-    return Response(json.dumps(session_status), mimetype='application/json')
+    return Response(json.dumps(construct_session_object(current_app.change_detector)), mimetype='application/json')
 
 
 @api.route('/session/start/<session_type>', methods=['POST'])
@@ -163,11 +170,7 @@ def start_session_handler(session_type):
     elif session_type == "timelapse":
         current_app.change_detector.start_timelapse_session()
 
-    session_status = {
-        "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
-    }
-    return Response(json.dumps(session_status), mimetype='application/json')
+    return Response(json.dumps(construct_session_object(current_app.change_detector)), mimetype='application/json')
 
 
 @api.route('/session/stop', methods=['POST'])
@@ -177,11 +180,7 @@ def stop_session_handler():
     :return: session status json object
     """
     current_app.change_detector.stop_session()
-    session_status = {
-        "mode": current_app.change_detector.mode,
-        "time_started": current_app.change_detector.session_start_time
-    }
-    return Response(json.dumps(session_status), mimetype='application/json')
+    return Response(json.dumps(construct_session_object(current_app.change_detector)), mimetype='application/json')
 
 
 @api.route('/time/<time_string>', methods=['POST'])

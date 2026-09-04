@@ -26,5 +26,6 @@
     "feed_timeout_s": 60,
     "video_duration_before_motion": 5,
     "video_duration_after_motion": 10,
+    "start_delay_hours": 0,
     "default_timelapse": 300
 }

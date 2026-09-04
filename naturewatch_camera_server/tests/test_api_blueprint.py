@@ -66,11 +66,13 @@ def test_get_settings(test_client):
     assert "rotation" in response_dict
     assert "exposure" in response_dict
     assert "sensitivity" in response_dict
+    assert "start_delay_hours" in response_dict
     assert "rotation" in response_dict
     assert response_dict["sensitivity"] == "default"
     assert response_dict["exposure"]["mode"] == 'auto'
     assert response_dict["exposure"]["iso"] == 0
     assert response_dict["exposure"]["shutter_speed"] == 0
+    assert response_dict["start_delay_hours"] == 0
 
 
 def test_post_settings(test_client):
@@ -84,7 +86,8 @@ def test_post_settings(test_client):
         "exposure": {
             "mode": "auto",
         },
-        "sensitivity": "less"
+        "sensitivity": "less",
+        "start_delay_hours": 0
     }
     headers = {
         "Content-Type": "application/json",
@@ -96,11 +99,36 @@ def test_post_settings(test_client):
     assert "rotation" in response_dict
     assert "exposure" in response_dict
     assert "sensitivity" in response_dict
+    assert "start_delay_hours" in response_dict
     assert response_dict["sensitivity"] == "less"
     assert response_dict["exposure"]["mode"] == 'auto'
     assert response_dict["exposure"]["iso"] == 0
     assert response_dict["exposure"]["shutter_speed"] == 0
     assert response_dict["rotation"] is True
+    assert response_dict["start_delay_hours"] == 0
+
+
+def test_post_start_delay_setting(test_client):
+    settings = {
+        "rotation": False,
+        "exposure": {
+            "mode": "auto"
+        },
+        "sensitivity": "default",
+        "start_delay_hours": 2
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    response = test_client.post('/api/settings', data=json.dumps(settings), headers=headers)
+    assert response.status_code == 200
+    response_dict = json.loads(response.data.decode('utf8'))
+    assert response_dict["start_delay_hours"] == 2
+
+    settings["start_delay_hours"] = 0
+    response = test_client.post('/api/settings', data=json.dumps(settings), headers=headers)
+    assert response.status_code == 200
 
 
 def test_session_status(test_client):
@@ -113,6 +141,7 @@ def test_session_status(test_client):
     assert response.status_code == 200
     response_dict = json.loads(response.data.decode('utf8'))
     assert "time_started" in response_dict
+    assert "is_waiting_for_start" in response_dict
     assert response_dict["mode"] == "inactive"
 
 

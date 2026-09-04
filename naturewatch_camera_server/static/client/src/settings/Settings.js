@@ -18,6 +18,8 @@ class Settings extends React.Component {
         this.onTimelapseActiveChange = this.onTimelapseActiveChange.bind(this);
         this.onIntervalChange = this.onIntervalChange.bind(this);
         this.onIntervalChangeEnd = this.onIntervalChangeEnd.bind(this);
+        this.onStartDelayChange = this.onStartDelayChange.bind(this);
+        this.onStartDelayChangeEnd = this.onStartDelayChangeEnd.bind(this);
         
 
         this.state = {
@@ -33,7 +35,8 @@ class Settings extends React.Component {
                 timelapse : {
                     active: false,
                     interval: 0
-                }
+                },
+                start_delay_hours: 0
             }
         };
 
@@ -187,6 +190,24 @@ class Settings extends React.Component {
         });
     }
 
+    onStartDelayChange(event) {
+        let currentSettings = this.state.settings;
+        currentSettings.start_delay_hours = parseInt(event.target.value, 10);
+        this.setState({
+            settings: currentSettings
+        });
+    }
+
+    onStartDelayChangeEnd(event) {
+        let currentSettings = this.state.settings;
+        currentSettings.start_delay_hours = parseInt(event.target.value, 10);
+        this.setState({
+            settings: currentSettings
+        }, () => {
+            this.postSettings();
+        });
+    }
+
     intervalValueToPos(val) {
 
         var position = 0;
@@ -292,6 +313,30 @@ class Settings extends React.Component {
                                         onActiveChange={this.onTimelapseActiveChange}
                                         intervalPos={this.intervalValueToPos(this.state.settings.timelapse.interval)}
                                         interval={this.state.settings.timelapse.interval}
+                                    />
+                                </Card.Body>
+                            </Accordion.Collapse>
+                        </Card>
+                        <Card>
+                            <Accordion.Toggle as={Card.Header} eventKey={5}>
+                                Start Delay
+                            </Accordion.Toggle>
+                            <Accordion.Collapse eventKey={5}>
+                                <Card.Body>
+                                    <label htmlFor="start-delay" className="interval-label">
+                                        Delay before starting: <span>{this.state.settings.start_delay_hours} hour(s)</span>
+                                    </label>
+                                    <br/>
+                                    <input
+                                        type="range"
+                                        id="start-delay"
+                                        min="0"
+                                        max="6"
+                                        step="1"
+                                        value={this.state.settings.start_delay_hours}
+                                        onChange={this.onStartDelayChange}
+                                        onMouseUp={this.onStartDelayChangeEnd}
+                                        onTouchEnd={this.onStartDelayChangeEnd}
                                     />
                                 </Card.Body>
                             </Accordion.Collapse>
