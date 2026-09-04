@@ -155,7 +155,7 @@ class ChangeDetector(Thread):
         except (TypeError, ValueError):
             parsed_value = 0
 
-        self.start_delay_hours = max(0, min(6, parsed_value))
+        self.start_delay_hours = max(0, min(4, parsed_value))
 
     def apply_start_delay(self):
         delay_seconds = self.start_delay_hours * 3600

@@ -331,7 +331,7 @@ class Settings extends React.Component {
                                         type="range"
                                         id="start-delay"
                                         min="0"
-                                        max="6"
+                                        max="4"
                                         step="1"
                                         value={this.state.settings.start_delay_hours}
                                         onChange={this.onStartDelayChange}
