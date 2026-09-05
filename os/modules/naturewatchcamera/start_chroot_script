@@ -24,6 +24,16 @@ if [ ! -f /etc/sysctl.conf ]; then
   touch /etc/sysctl.conf
   echo "#net.ipv4.ip_forward=1" >> /etc/sysctl.conf
 fi
+if [ ! -f /etc/network/interfaces ]; then
+  echo "Creating missing /etc/network/interfaces"
+  mkdir -p /etc/network
+  cat >/etc/network/interfaces <<'EOF'
+auto lo
+iface lo inet loopback
+
+source-directory /etc/network/interfaces.d
+EOF
+fi
  apt-get purge -y libreoffice*
  apt-get clean
  apt-get update
